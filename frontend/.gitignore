@@ -1,0 +1,13 @@
+# Next.js build output
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Generated types
+next-env.d.ts
+
+# Playwright test artifacts
+test-results/
+playwright-report/
