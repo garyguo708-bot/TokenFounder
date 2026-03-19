@@ -124,7 +124,7 @@ export default function Home() {
         {progress && (
           <div className="text-sm text-gray-400">
             阶段：
-            <span className="text-blue-400 font-medium">
+            <span data-testid="stage-label" className="text-blue-400 font-medium">
               {stageLabels[progress.current_stage] || progress.current_stage}
             </span>
           </div>
@@ -141,12 +141,12 @@ export default function Home() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div data-testid="message-list" className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((msg, i) => (
           <MessageBubble key={i} role={msg.role} content={msg.content} />
         ))}
         {isLoading && (
-          <div className="flex items-center gap-2 text-gray-500 text-sm pl-2">
+          <div data-testid="loading-indicator" className="flex items-center gap-2 text-gray-500 text-sm pl-2">
             <span className="animate-pulse">●●●</span>
             <span>TokenFounder 正在思考...</span>
           </div>
@@ -166,6 +166,7 @@ export default function Home() {
       <div className="px-4 py-4 border-t border-gray-800">
         <div className="flex gap-3 max-w-4xl mx-auto">
           <textarea
+            data-testid="chat-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -180,6 +181,7 @@ export default function Home() {
             disabled={isLoading}
           />
           <button
+            data-testid="send-btn"
             onClick={sendMessage}
             disabled={isLoading || !input.trim()}
             className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-sm font-medium transition-colors"

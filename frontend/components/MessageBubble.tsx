@@ -27,7 +27,7 @@ export default function MessageBubble({ role, content }: Props) {
   const parts = parseMermaid(content);
 
   return (
-    <div className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
+    <div data-testid="message-bubble" data-role={role} className={`flex ${role === "user" ? "justify-end" : "justify-start"}`}>
       <div
         ref={ref}
         className={`max-w-2xl rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap

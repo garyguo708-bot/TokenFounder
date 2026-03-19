@@ -36,15 +36,16 @@ const CANVAS_LAYOUT = [
 
 export default function BusinessCanvas({ data, onClose }: Props) {
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-auto">
+    <div data-testid="canvas-modal" className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-auto">
       <div className="bg-gray-900 rounded-2xl w-full max-w-5xl max-h-full overflow-auto">
         {/* Header */}
         <div className="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">{data.project_name}</h2>
-            <p className="text-sm text-gray-400 mt-0.5">{data.tagline}</p>
+            <h2 data-testid="canvas-project-name" className="text-xl font-bold text-white">{data.project_name}</h2>
+            <p data-testid="canvas-tagline" className="text-sm text-gray-400 mt-0.5">{data.tagline}</p>
           </div>
           <button
+            data-testid="canvas-close"
             onClick={onClose}
             className="text-gray-500 hover:text-white transition-colors text-lg ml-4"
           >
@@ -66,7 +67,7 @@ export default function BusinessCanvas({ data, onClose }: Props) {
 
           {/* Next Steps */}
           {data.next_steps.length > 0 && (
-            <div className="mt-4 p-4 bg-blue-950 rounded-xl border border-blue-800">
+            <div data-testid="canvas-next-steps" className="mt-4 p-4 bg-blue-950 rounded-xl border border-blue-800">
               <h3 className="text-sm font-semibold text-blue-300 mb-2">🚀 建议下一步</h3>
               <ul className="space-y-1">
                 {data.next_steps.map((step, i) => (
@@ -87,6 +88,7 @@ export default function BusinessCanvas({ data, onClose }: Props) {
 function CanvasCell({ label, item }: { label: string; item: CanvasItem }) {
   return (
     <div
+      data-testid="canvas-cell"
       className={`rounded-xl p-3 border text-xs
         ${item.is_inferred
           ? "bg-yellow-950/30 border-yellow-800/50"
@@ -103,7 +105,7 @@ function CanvasCell({ label, item }: { label: string; item: CanvasItem }) {
         ))}
       </ul>
       {item.is_inferred && (
-        <span className="text-yellow-600 text-xs mt-2 block">* 推断补全</span>
+        <span data-testid="inferred-badge" className="text-yellow-600 text-xs mt-2 block">* 推断补全</span>
       )}
     </div>
   );
