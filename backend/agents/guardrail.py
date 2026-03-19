@@ -7,7 +7,8 @@ import json
 import anthropic
 from backend.config import config
 
-_client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+# AsyncAnthropic: non-blocking I/O, safe for FastAPI async handlers
+_client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
 
 GUARDRAIL_SYSTEM = """你是一个主题守护模块。你的唯一任务是判断用户消息是否与"Agent/AI创业、商业模式、创业想法"相关。
 
@@ -18,9 +19,9 @@ GUARDRAIL_SYSTEM = """你是一个主题守护模块。你的唯一任务是判�
 
 【输出格式】严格JSON，不要任何额外文字：
 {
-  "is_relevant": true/false,
-  "confidence": 0.0-1.0,
-  "redirect_message": "（仅当is_relevant=false时填写，温和友好地将用户引回Agent创业主题，15-30字）"
+  "is_relevant": true,
+  "confidence": 0.95,
+  "redirect_message": null
 }"""
 
 
@@ -33,7 +34,7 @@ async def check_topic(user_message: str) -> dict:
             "redirect_message": str | None
         }
     """
-    response = _client.messages.create(
+    response = await _client.messages.create(
         model=config.model_fast,
         max_tokens=200,
         system=GUARDRAIL_SYSTEM,
@@ -41,10 +42,12 @@ async def check_topic(user_message: str) -> dict:
     )
 
     raw = response.content[0].text.strip()
-    try:
-        result = json.loads(raw)
-    except json.JSONDecodeError:
-        # Fallback: treat as relevant if parsing fails
-        result = {"is_relevant": True, "confidence": 0.5, "redirect_message": None}
+    # Strip markdown code block if model wraps output
+    if raw.startswith("```"):
+        raw = raw.split("```")[1].lstrip("json").strip()
 
-    return result
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Fail open: treat as relevant so we never block valid ideas
+        return {"is_relevant": True, "confidence": 0.5, "redirect_message": None}

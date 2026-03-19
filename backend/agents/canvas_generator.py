@@ -4,34 +4,35 @@ Triggered only when BMC Judge confirms threshold is met.
 """
 
 import json
+import re
 import anthropic
 from backend.config import config
 from backend.models.session import Session
 from backend.models.bmc import BusinessCanvas, CanvasItem
 
-_client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+_client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
 
 CANVAS_SYSTEM = """你是商业画布生成专家。基于对话中提取的信息，生成一份完整的 AI Agent 创业项目商业画布。
 
 【要求】
 - 对已有信息进行精炼和专业化表达
-- 对信息不足的部分，基于上下文做合理补全，并在is_inferred设为true
-- 语言简洁有力，每项3-5个要点
+- 对信息不足的部分，基于上下文做合理补全，并将该项的 is_inferred 设为 true
+- 语言简洁有力，每项3-5个要点，每个要点15字以内
 - 体现 AI Agent 产品的独特性（自动化、规模化、持续学习等）
 
-【输出格式】严格JSON：
+【输出格式】严格JSON，不要任何额外文字或代码块：
 {
-  "project_name": "项目名称（简洁有力）",
-  "tagline": "一句话描述项目价值",
+  "project_name": "项目名称（简洁有力，4-8字）",
+  "tagline": "一句话描述项目价值（20字以内）",
   "canvas": {
-    "customer_segments": {"content": ["要点1", "要点2"], "is_inferred": false},
-    "value_propositions": {"content": ["要点1", "要点2"], "is_inferred": false},
+    "customer_segments": {"content": ["要点1", "要点2", "要点3"], "is_inferred": false},
+    "value_propositions": {"content": ["要点1", "要点2", "要点3"], "is_inferred": false},
     "channels": {"content": ["要点1", "要点2"], "is_inferred": false},
     "customer_relationships": {"content": ["要点1", "要点2"], "is_inferred": false},
     "revenue_streams": {"content": ["要点1", "要点2"], "is_inferred": false},
     "key_resources": {"content": ["要点1", "要点2"], "is_inferred": false},
     "key_activities": {"content": ["要点1", "要点2"], "is_inferred": false},
-    "key_partnerships": {"content": ["要点1", "要点2"], "is_inferred": false},
+    "key_partnerships": {"content": ["要点1", "要点2"], "is_inferred": true},
     "cost_structure": {"content": ["要点1", "要点2"], "is_inferred": false}
   },
   "next_steps": ["建议的下一步行动1", "建议2", "建议3"]
@@ -40,20 +41,17 @@ CANVAS_SYSTEM = """你是商业画布生成专家。基于对话中提取的信�
 
 async def generate_canvas(session: Session, judge_result: dict) -> BusinessCanvas:
     """Generate a complete Business Model Canvas from session data."""
-    bmc_info = session.bmc_info
-    history_summary = session.get_history_text()[-3000:]  # Last 3000 chars to fit context
+    history_summary = session.get_history_text()[-3000:]
 
-    prompt = f"""根据以下对话历史和已提取信息，生成完整的商业画布：
+    prompt = (
+        "根据以下对话历史和已提取信息，生成完整的商业画布JSON：\n\n"
+        f"【对话历史】\n{history_summary}\n\n"
+        f"【已提取的商业信息】\n"
+        f"{json.dumps(judge_result.get('extracted', {}), ensure_ascii=False, indent=2)}\n\n"
+        "请直接输出JSON，不要任何额外说明："
+    )
 
-【对话历史摘要】
-{history_summary}
-
-【已提取的商业信息】
-{json.dumps(judge_result.get("extracted", {}), ensure_ascii=False, indent=2)}
-
-请生成商业画布JSON："""
-
-    response = _client.messages.create(
+    response = await _client.messages.create(
         model=config.model_main,
         max_tokens=2000,
         system=CANVAS_SYSTEM,
@@ -61,14 +59,11 @@ async def generate_canvas(session: Session, judge_result: dict) -> BusinessCanva
     )
 
     raw = response.content[0].text.strip()
-    # Strip markdown code block if present
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+    # Strip markdown code block if model adds one despite instructions
+    raw = re.sub(r"^```(?:json)?\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
 
     data = json.loads(raw)
-
     canvas_data = data.get("canvas", {})
 
     def parse_item(key: str) -> CanvasItem:
